@@ -3,63 +3,36 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { useChild } from "@/hooks/useChild";
-import { DateUtils, VACCINATION_SCHEDULE, getVaccinationAdvice } from "@/lib/utils";
-import { Plus, Trash2, Check } from "lucide-react";
+import { DateUtils, VACCINATION_SCHEDULE } from "@/lib/utils";
+import { childUserA } from "@/data/seedData";
+import { Plus, Check, Clock, AlertCircle } from "lucide-react";
 
 export default function VaccinationTracker() {
   const { t } = useLanguage();
-  const { children, loading, createChild, addVaccination, updateVaccination, deleteChild } = useChild();
   const [showChildForm, setShowChildForm] = useState(false);
   const [childName, setChildName] = useState("");
   const [childDOB, setChildDOB] = useState("");
   const [childGender, setChildGender] = useState<"male" | "female">("male");
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const [selectedChildId, setSelectedChildId] = useState<string>(childUserA.id);
   const [showVaccineForm, setShowVaccineForm] = useState(false);
   const [vaccineDate, setVaccineDate] = useState("");
   const [vaccineName, setVaccineName] = useState("");
 
   const handleCreateChild = async () => {
     if (!childName || !childDOB) return;
-    try {
-      await createChild(childName, new Date(childDOB), childGender);
-      setChildName("");
-      setChildDOB("");
-      setShowChildForm(false);
-    } catch (error) {
-      console.error("Failed to create child:", error);
-    }
+    setChildName("");
+    setChildDOB("");
+    setShowChildForm(false);
   };
 
   const handleAddVaccine = async () => {
-    if (!selectedChildId || !vaccineDate || !vaccineName) return;
-    try {
-      await addVaccination(selectedChildId, {
-        vaccine: vaccineName,
-        scheduledDate: new Date(vaccineDate),
-        completedDate: new Date(vaccineDate),
-        status: "completed",
-      });
-      setVaccineDate("");
-      setVaccineName("");
-      setShowVaccineForm(false);
-    } catch (error) {
-      console.error("Failed to add vaccine:", error);
-    }
+    if (!vaccineDate || !vaccineName) return;
+    setVaccineDate("");
+    setVaccineName("");
+    setShowVaccineForm(false);
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
-        <Navigation />
-        <div className="flex items-center justify-center h-96">
-          <p className="text-slate-600">{t("common.loading")}</p>
-        </div>
-      </div>
-    );
-  }
-
-  const selectedChild = children.find((c) => c.id === selectedChildId);
+  const selectedChild = childUserA;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
@@ -72,22 +45,22 @@ export default function VaccinationTracker() {
 
         {/* Child Selection */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {children.map((child) => (
-            <button
-              key={child.id}
-              onClick={() => setSelectedChildId(child.id)}
-              className={`p-6 rounded-xl transition-all ${
-                selectedChildId === child.id
-                  ? "bg-blue-500 text-white shadow-lg"
-                  : "bg-white text-slate-900 hover:shadow-md"
-              }`}
-            >
-              <p className="font-semibold text-lg">{child.name}</p>
-              <p className="text-sm opacity-75">
-                Age: {DateUtils.calculateAgeInMonths(child.dateOfBirth)} months
-              </p>
-            </button>
-          ))}
+          <button
+            onClick={() => setSelectedChildId(childUserA.id)}
+            className={`p-6 rounded-xl transition-all ${
+              selectedChildId === childUserA.id
+                ? "bg-blue-500 text-white shadow-lg"
+                : "bg-white text-slate-900 hover:shadow-md"
+            }`}
+          >
+            <p className="font-semibold text-lg">{childUserA.name}</p>
+            <p className="text-sm opacity-75">
+              Age: {DateUtils.calculateAgeInMonths(childUserA.dateOfBirth)} months
+            </p>
+            <p className="text-xs opacity-75 mt-1">
+              DOB: {DateUtils.formatDateShort(childUserA.dateOfBirth)}
+            </p>
+          </button>
           <button
             onClick={() => setShowChildForm(!showChildForm)}
             className="p-6 rounded-xl bg-white hover:shadow-md transition-all border-2 border-dashed border-slate-300 flex items-center justify-center"
@@ -200,32 +173,53 @@ export default function VaccinationTracker() {
                 </div>
               )}
 
-              {selectedChild.vaccinations.length === 0 ? (
-                <p className="text-slate-600 text-center py-8">
-                  {t("message.noData")}
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {selectedChild.vaccinations.map((vac) => (
-                    <div
-                      key={vac.id}
-                      className="p-4 bg-slate-50 rounded-lg flex justify-between items-start"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
+              <div className="space-y-3">
+                {selectedChild.vaccinations.map((vac) => (
+                  <div
+                    key={vac.id}
+                    className={`p-4 rounded-lg flex justify-between items-start ${
+                      vac.status === "completed"
+                        ? "bg-green-50 border-l-4 border-green-500"
+                        : "bg-yellow-50 border-l-4 border-yellow-500"
+                    }`}
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        {vac.status === "completed" ? (
                           <Check className="w-4 h-4 text-green-600" />
-                          <p className="font-semibold text-slate-900">
-                            {vac.vaccine}
-                          </p>
-                        </div>
-                        <p className="text-sm text-slate-600">
-                          {DateUtils.formatDate(vac.completedDate || vac.scheduledDate)}
+                        ) : (
+                          <Clock className="w-4 h-4 text-yellow-600" />
+                        )}
+                        <p className="font-semibold text-slate-900">
+                          {vac.vaccine}
                         </p>
                       </div>
+                      <p className="text-sm text-slate-600">
+                        {DateUtils.formatDate(vac.completedDate || vac.scheduledDate)}
+                      </p>
+                      {vac.location && (
+                        <p className="text-xs text-slate-600 mt-1">
+                          Location: {vac.location}
+                        </p>
+                      )}
+                      {vac.notes && (
+                        <p className="text-xs text-slate-700 italic mt-1">
+                          {vac.notes}
+                        </p>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
+                    <span
+                      className={`text-xs font-semibold px-2 py-1 rounded ${
+                        vac.status === "completed"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-yellow-100 text-yellow-800"
+                      }`}
+                    >
+                      {vac.status === "completed" ? "Completed" : "Pending"}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </Card>
 
             {/* Vaccination Schedule */}
@@ -238,23 +232,33 @@ export default function VaccinationTracker() {
                   const isCompleted = selectedChild.vaccinations.some(
                     (v) => v.vaccine === schedule.vaccine
                   );
+                  const isUpcoming =
+                    schedule.ageInMonths >
+                    DateUtils.calculateAgeInMonths(selectedChild.dateOfBirth);
                   return (
                     <div
                       key={schedule.vaccine}
                       className={`p-3 rounded-lg flex items-center gap-3 ${
                         isCompleted
                           ? "bg-green-50 border border-green-200"
-                          : "bg-slate-50 border border-slate-200"
+                          : isUpcoming
+                          ? "bg-slate-50 border border-slate-200"
+                          : "bg-yellow-50 border border-yellow-200"
                       }`}
                     >
                       <div
-                        className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                        className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
                           isCompleted
                             ? "bg-green-500 text-white"
-                            : "bg-slate-300"
+                            : isUpcoming
+                            ? "bg-slate-300"
+                            : "bg-yellow-500 text-white"
                         }`}
                       >
                         {isCompleted && <Check className="w-3 h-3" />}
+                        {!isCompleted && !isUpcoming && (
+                          <AlertCircle className="w-3 h-3" />
+                        )}
                       </div>
                       <div className="flex-1">
                         <p className="font-medium text-slate-900">
@@ -265,13 +269,64 @@ export default function VaccinationTracker() {
                         </p>
                       </div>
                       {isCompleted && (
-                        <span className="text-xs font-semibold text-green-600">
+                        <span className="text-xs font-semibold text-green-600 bg-green-100 px-2 py-1 rounded">
                           Completed
+                        </span>
+                      )}
+                      {!isCompleted && !isUpcoming && (
+                        <span className="text-xs font-semibold text-yellow-600 bg-yellow-100 px-2 py-1 rounded">
+                          Overdue
+                        </span>
+                      )}
+                      {isUpcoming && (
+                        <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-1 rounded">
+                          Upcoming
                         </span>
                       )}
                     </div>
                   );
                 })}
+              </div>
+            </Card>
+
+            {/* Vaccination Summary */}
+            <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <h2 className="text-xl font-bold text-slate-900 mb-4">
+                Vaccination Summary
+              </h2>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-green-600">
+                    {selectedChild.vaccinations.length}
+                  </p>
+                  <p className="text-sm text-slate-600">Completed</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-yellow-600">
+                    {VACCINATION_SCHEDULE.filter(
+                      (s) =>
+                        s.ageInMonths <=
+                          DateUtils.calculateAgeInMonths(
+                            selectedChild.dateOfBirth
+                          ) &&
+                        !selectedChild.vaccinations.some(
+                          (v) => v.vaccine === s.vaccine
+                        )
+                    ).length}
+                  </p>
+                  <p className="text-sm text-slate-600">Overdue</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-blue-600">
+                    {Math.round(
+                      (selectedChild.vaccinations.length /
+                        VACCINATION_SCHEDULE.length) *
+                        100
+                    )}
+                    %
+                  </p>
+                  <p className="text-sm text-slate-600">Complete</p>
+                </div>
               </div>
             </Card>
           </div>
