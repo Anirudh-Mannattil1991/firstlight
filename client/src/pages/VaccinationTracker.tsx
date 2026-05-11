@@ -1,38 +1,54 @@
 import { useState } from "react";
+import React from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAppData } from "@/contexts/AppDataContext";
 import Navigation from "@/components/Navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DateUtils, VACCINATION_SCHEDULE } from "@/lib/utils";
-import { childUserA } from "@/data/seedData";
 import { Plus, Check, Clock, AlertCircle } from "lucide-react";
 
 export default function VaccinationTracker() {
   const { t } = useLanguage();
+  const { state, addChild, addVaccination } = useAppData();
   const [showChildForm, setShowChildForm] = useState(false);
   const [childName, setChildName] = useState("");
   const [childDOB, setChildDOB] = useState("");
   const [childGender, setChildGender] = useState<"male" | "female">("male");
-  const [selectedChildId, setSelectedChildId] = useState<string>(childUserA.id);
+  const [selectedChildId, setSelectedChildId] = useState<string>("");
   const [showVaccineForm, setShowVaccineForm] = useState(false);
   const [vaccineDate, setVaccineDate] = useState("");
   const [vaccineName, setVaccineName] = useState("");
 
+  // Set initial child on load
+  React.useEffect(() => {
+    if (state.children.length > 0 && !selectedChildId) {
+      setSelectedChildId(state.children[0].id);
+    }
+  }, [state.children, selectedChildId]);
+
   const handleCreateChild = async () => {
     if (!childName || !childDOB) return;
+    addChild(childName, new Date(childDOB), childGender);
     setChildName("");
     setChildDOB("");
     setShowChildForm(false);
   };
 
   const handleAddVaccine = async () => {
-    if (!vaccineDate || !vaccineName) return;
+    if (!vaccineDate || !vaccineName || !selectedChildId) return;
+    addVaccination(selectedChildId, {
+      vaccine: vaccineName,
+      scheduledDate: new Date(vaccineDate),
+      completedDate: new Date(vaccineDate),
+      status: "completed",
+    });
     setVaccineDate("");
     setVaccineName("");
     setShowVaccineForm(false);
   };
 
-  const selectedChild = childUserA;
+  const selectedChild = state.children.find((c) => c.id === selectedChildId);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
@@ -45,22 +61,25 @@ export default function VaccinationTracker() {
 
         {/* Child Selection */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <button
-            onClick={() => setSelectedChildId(childUserA.id)}
-            className={`p-6 rounded-xl transition-all ${
-              selectedChildId === childUserA.id
-                ? "bg-blue-500 text-white shadow-lg"
-                : "bg-white text-slate-900 hover:shadow-md"
-            }`}
-          >
-            <p className="font-semibold text-lg">{childUserA.name}</p>
-            <p className="text-sm opacity-75">
-              Age: {DateUtils.calculateAgeInMonths(childUserA.dateOfBirth)} months
-            </p>
-            <p className="text-xs opacity-75 mt-1">
-              DOB: {DateUtils.formatDateShort(childUserA.dateOfBirth)}
-            </p>
-          </button>
+          {state.children.map((child) => (
+            <button
+              key={child.id}
+              onClick={() => setSelectedChildId(child.id)}
+              className={`p-6 rounded-xl transition-all ${
+                selectedChildId === child.id
+                  ? "bg-blue-500 text-white shadow-lg"
+                  : "bg-white text-slate-900 hover:shadow-md"
+              }`}
+            >
+              <p className="font-semibold text-lg">{child.name}</p>
+              <p className="text-sm opacity-75">
+                Age: {DateUtils.calculateAgeInMonths(child.dateOfBirth)} months
+              </p>
+              <p className="text-xs opacity-75 mt-1">
+                DOB: {DateUtils.formatDateShort(child.dateOfBirth)}
+              </p>
+            </button>
+          ))}
           <button
             onClick={() => setShowChildForm(!showChildForm)}
             className="p-6 rounded-xl bg-white hover:shadow-md transition-all border-2 border-dashed border-slate-300 flex items-center justify-center"
@@ -117,7 +136,7 @@ export default function VaccinationTracker() {
         )}
 
         {/* Vaccination Records */}
-        {selectedChild && (
+        {selectedChild && state.children.length > 0 && (
           <div className="space-y-6">
             {/* Add Vaccine Form */}
             <Card className="p-6">

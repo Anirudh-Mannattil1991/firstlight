@@ -1,35 +1,23 @@
 import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAppData } from "@/contexts/AppDataContext";
 import Navigation from "@/components/Navigation";
 import { Card } from "@/components/ui/card";
 import { DateUtils } from "@/lib/utils";
-import {
-  timelineEventsUserA,
-  timelineEventsUserB,
-  timelineEventsUserC,
-  timelineEventsChildA,
-} from "@/data/seedData";
 import { Heart, Baby, Apple, Calendar } from "lucide-react";
 
 export default function Timeline() {
   const { t } = useLanguage();
-  const [selectedUser, setSelectedUser] = useState("A");
+  const { state } = useAppData();
+  const [filterType, setFilterType] = useState<string | null>(null);
 
-  const allEvents = {
-    A: [...timelineEventsUserA, ...timelineEventsChildA],
-    B: timelineEventsUserB,
-    C: timelineEventsUserC,
-  };
-
-  const userLabels = {
-    A: "Urban - High Risk + Child",
-    B: "Rural - Normal Pregnancy",
-    C: "Teenage - Irregular Care",
-  };
-
-  const events = allEvents[selectedUser as keyof typeof allEvents].sort(
+  const events = state.timelineEvents.sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
+
+  const filteredEvents = filterType
+    ? events.filter((e) => e.type === filterType)
+    : events;
 
   const getIcon = (type: string) => {
     switch (type) {
@@ -82,38 +70,50 @@ export default function Timeline() {
           Complete health history across different user journeys
         </p>
 
-        {/* User Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          {Object.entries(userLabels).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setSelectedUser(key)}
-              className={`p-4 rounded-xl transition-all text-left ${
-                selectedUser === key
-                  ? "bg-purple-500 text-white shadow-lg"
-                  : "bg-white text-slate-900 hover:shadow-md border border-slate-200"
-              }`}
-            >
-              <p className="font-semibold">{label}</p>
-              <p className="text-sm opacity-75">
-                {allEvents[key as keyof typeof allEvents].length} events
-              </p>
-            </button>
-          ))}
+        {/* Filter Selection */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+          <button
+            onClick={() => setFilterType(null)}
+            className={`p-4 rounded-xl transition-all text-left ${
+              filterType === null
+                ? "bg-purple-500 text-white shadow-lg"
+                : "bg-white text-slate-900 hover:shadow-md border border-slate-200"
+            }`}
+          >
+            <p className="font-semibold">All Events</p>
+            <p className="text-sm opacity-75">{events.length} total</p>
+          </button>
+          {["pregnancy", "vaccination", "nutrition", "appointment"].map((type) => {
+            const count = events.filter((e) => e.type === type).length;
+            return (
+              <button
+                key={type}
+                onClick={() => setFilterType(type)}
+                className={`p-4 rounded-xl transition-all text-left ${
+                  filterType === type
+                    ? "bg-purple-500 text-white shadow-lg"
+                    : "bg-white text-slate-900 hover:shadow-md border border-slate-200"
+                }`}
+              >
+                <p className="font-semibold capitalize">{type}</p>
+                <p className="text-sm opacity-75">{count} events</p>
+              </button>
+            );
+          })}
         </div>
 
         {/* Timeline */}
         <div className="space-y-4">
-          {events.length === 0 ? (
+          {filteredEvents.length === 0 ? (
             <Card className="p-12 text-center">
               <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-600">{t("timeline.noEvents")}</p>
             </Card>
           ) : (
-            events.map((event, index) => (
+            filteredEvents.map((event, index) => (
               <div key={event.id} className="relative">
                 {/* Timeline connector */}
-                {index < events.length - 1 && (
+                {index < filteredEvents.length - 1 && (
                   <div className="absolute left-6 top-12 w-0.5 h-8 bg-gradient-to-b from-slate-300 to-transparent" />
                 )}
 
@@ -162,7 +162,7 @@ export default function Timeline() {
         </div>
 
         {/* Event Type Legend */}
-        {events.length > 0 && (
+        {filteredEvents.length > 0 && (
           <Card className="p-6 mt-8 bg-slate-50">
             <h2 className="text-lg font-semibold text-slate-900 mb-4">
               Event Types

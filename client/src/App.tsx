@@ -1,8 +1,10 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { AppDataProvider } from "./contexts/AppDataContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import Home from "./pages/Home";
 import PregnancyTracker from "./pages/PregnancyTracker";
@@ -11,7 +13,6 @@ import NutritionTracker from "./pages/NutritionTracker";
 import Timeline from "./pages/Timeline";
 import CHWDashboard from "./pages/CHWDashboard";
 import Settings from "./pages/Settings";
-import NotFound from "./pages/NotFound";
 
 function Router() {
   return (
@@ -24,22 +25,33 @@ function Router() {
       <Route path="/chw" component={CHWDashboard} />
       <Route path="/settings" component={Settings} />
       <Route path="/404" component={NotFound} />
+      {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>
   );
 }
 
+// NOTE: About Theme
+// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
+//   to keep consistent foreground/background color across components
+// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
+
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
+      <AppDataProvider>
         <LanguageProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Router />
-          </TooltipProvider>
+          <ThemeProvider
+            defaultTheme="light"
+            // switchable
+          >
+            <TooltipProvider>
+              <Toaster />
+              <Router />
+            </TooltipProvider>
+          </ThemeProvider>
         </LanguageProvider>
-      </ThemeProvider>
+      </AppDataProvider>
     </ErrorBoundary>
   );
 }
